@@ -6,12 +6,14 @@ const axios = require("axios");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
-app.use(express.json()); // Middleware para parsear cuerpos de solicitud JSON (una sola vez)
+app.use(express.json()); // Middleware para parsear cuerpos de solicitud JSON
 
 // Inicializa la instancia de Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-// Elige el modelo que quieres usar (por ejemplo, "gemini-pro" para texto)
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+// Elige el modelo que quieres usar
+// NOTA IMPORTANTE: Si "gemini-1.0-pro" sigue dando 404, revisa los modelos disponibles en tu cuenta de Google AI Studio.
+// Podrías intentar con "text-bison-001" si ese es el modelo de texto por defecto para tu región/cuenta.
+const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" }); 
 
 // Obtiene el token de Z-API de las variables de entorno
 const ZAPI_TOKEN = process.env.ZAPI_TOKEN;
@@ -37,7 +39,7 @@ app.post("/webhook", async (req, res) => {
       return res.sendStatus(400); // Bad Request si falta información
     }
 
-    // Llama a la API de Gemini
+    // Llama a la API de Gemini para obtener una respuesta
     const result = await model.generateContent(msg);
     const response = await result.response;
     const textoIA = response.text(); // Extrae el texto de la respuesta de Gemini
