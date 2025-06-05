@@ -11,7 +11,7 @@ app.use(express.json()); // Middleware para parsear cuerpos de solicitud JSON (u
 // Inicializa la instancia de Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // Elige el modelo que quieres usar (por ejemplo, "gemini-pro" para texto)
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" }); // Probemos con esta versión específica
 
 // Obtiene el token de Z-API de las variables de entorno
 const ZAPI_TOKEN = process.env.ZAPI_TOKEN;
