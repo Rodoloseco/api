@@ -1,8 +1,7 @@
 // index.js
 const express = require("express");
 const axios = require("axios");
-// Importa la clase principal OpenAI para la versión 4.x de la librería
-const OpenAI = require("openai");
+const OpenAI = require("openai"); // Importa la clase principal OpenAI para la versión 4.x de la librería
 
 const app = express();
 app.use(express.json()); // Middleware para parsear cuerpos de solicitud JSON
@@ -15,7 +14,7 @@ const openai = new OpenAI({
 // Obtiene el token de Z-API de las variables de entorno
 const ZAPI_TOKEN = process.env.ZAPI_TOKEN;
 
-// --- Nueva ruta de salud (Health Check) para Render ---
+// --- Ruta de salud (Health Check) para Render ---
 // Esta ruta responderá a solicitudes GET en la raíz de tu URL
 app.get("/", (req, res) => {
   res.status(200).send("Bot de WhatsApp activo y funcionando!");
@@ -24,18 +23,28 @@ app.get("/", (req, res) => {
 // Ruta principal del webhook para recibir mensajes de Z-API
 app.post("/webhook", async (req, res) => {
   // Logea el cuerpo completo de la solicitud para depuración
+  // Esto nos ha ayudado a entender la estructura de Z-API
   console.log("Webhook recibido. Contenido de req.body:", req.body);
 
   try {
-    // Intenta acceder a las propiedades 'message' y 'text'/'sender'
-    // Si req.body.message es undefined, aquí se generará el error 'Cannot read properties of undefined'
-    const msg = req.body.message.text;
-    const sender = req.body.message.sender;
+    // --- CAMBIOS CRUCIALES AQUÍ ---
+    // Según los logs, el texto del mensaje está en req.body.text.message
+    const msg = req.body.text.message;
+
+    // Según los logs, el número del remitente está en req.body.phone
+    const sender = req.body.phone;
+    // --- FIN CAMBIOS ---
+
+    // Asegúrate de que tanto 'msg' como 'sender' existan
+    if (!msg || !sender) {
+        console.error("Error: Mensaje o remitente no encontrados en el webhook.");
+        return res.sendStatus(400); // Bad Request si falta información
+    }
 
     // Llama a la API de OpenAI para obtener una respuesta del chat
     // Usando el método correcto para la versión 4.x: openai.chat.completions.create
     const respuesta = await openai.chat.completions.create({
-      model: "gpt-4", // Asegúrate de que este modelo esté disponible para tu cuenta
+      model: "gpt-4", // Asegúrate de que este modelo esté disponible para tu cuenta OpenAI
       messages: [{ role: "user", content: msg }]
     });
 
@@ -44,13 +53,13 @@ app.post("/webhook", async (req, res) => {
 
     // Envía la respuesta de la IA de vuelta a WhatsApp a través de Z-API
     await axios.post(`https://api.z-api.io/instances/${process.env.ZAPI_INSTANCE_ID}/send-text`, {
-      phone: sender,
-      message: textoIA
+      phone: sender, // El número de teléfono del destinatario
+      message: textoIA // El mensaje generado por la IA
     }, {
       headers: { Authorization: `Bearer ${ZAPI_TOKEN}` }
     });
 
-    // Envía una respuesta 200 OK a Z-API para indicar que el webhook fue recibido
+    // Envía una respuesta 200 OK a Z-API para indicar que el webhook fue recibido y procesado
     res.sendStatus(200);
   } catch (error) {
     // Captura y logea cualquier error que ocurra dentro del try block
