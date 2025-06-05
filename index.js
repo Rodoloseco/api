@@ -44,7 +44,7 @@ app.post("/webhook", async (req, res) => {
     // Llama a la API de OpenAI para obtener una respuesta del chat
     // Usando el método correcto para la versión 4.x: openai.chat.completions.create
     const respuesta = await openai.chat.completions.create({
-      model: "gpt-4", // Asegúrate de que este modelo esté disponible para tu cuenta OpenAI
+      model: "gpt-3.5-turbo", // Asegúrate de que este modelo esté disponible para tu cuenta OpenAI
       messages: [{ role: "user", content: msg }]
     });
 
