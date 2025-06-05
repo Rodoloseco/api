@@ -8,7 +8,7 @@ app.use(express.json()); // Middleware para parsear cuerpos de solicitud JSON
 
 // Inicializa la instancia de OpenAI
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY // Usa la variable de entorno para tu API Key de OpenAI
 });
 
 // Obtiene el token de Z-API de las variables de entorno
@@ -26,9 +26,9 @@ app.post("/webhook", async (req, res) => {
 
   try {
     // Accede al texto del mensaje y al número del remitente
-    // Asegúrate de que esta estructura sea la correcta según tus logs de Z-API
-    const msg = req.body.text.message; // O req.body.message.text si esa es la estructura
-    const sender = req.body.phone;     // O req.body.message.sender si esa es la estructura
+    // Según tus logs anteriores, la estructura es req.body.text.message y req.body.phone
+    const msg = req.body.text.message; 
+    const sender = req.body.phone;     
 
     // Asegúrate de que tanto 'msg' como 'sender' existan
     if (!msg || !sender) {
@@ -38,7 +38,8 @@ app.post("/webhook", async (req, res) => {
 
     // Llama a la API de OpenAI para obtener una respuesta del chat
     const respuesta = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", // Puedes probar "gpt-4" si tienes acceso y cuota
+      model: "gpt-3.5-turbo", // Este modelo es comúnmente disponible y más económico/gratuito en pruebas iniciales.
+                               // Si tienes acceso y quieres un modelo más avanzado, puedes probar "gpt-4" (si tienes cuota).
       messages: [{ role: "user", content: msg }]
     });
 
@@ -59,7 +60,7 @@ app.post("/webhook", async (req, res) => {
   } catch (error) {
     // Captura y logea cualquier error que ocurra
     console.error("Error en el webhook o al procesar el mensaje:", error.message);
-    // Si el error tiene una propiedad 'response.data' (típico de errores de axios o de API), la mostramos
+    // Es muy importante loguear el error completo para depuración
     if (error.response && error.response.data) {
         console.error("Detalles del error de API:", error.response.data);
     }
