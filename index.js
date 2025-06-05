@@ -1,75 +1,63 @@
 // index.js
 const express = require("express");
 const axios = require("axios");
-const OpenAI = require("openai"); // Importa la clase principal OpenAI para la versión 4.x de la librería
+
+// --- CAMBIO AQUÍ: Importa la librería de Google Generative AI ---
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const app = express();
-app.use(express.json()); // Middleware para parsear cuerpos de solicitud JSON
+app.use(express.json());
 
-// Inicializa la instancia de OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// --- CAMBIO AQUÍ: Inicializa la instancia de Gemini ---
+// Accede a tu clave API de Gemini desde las variables de entorno
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Elige el modelo que quieres usar (por ejemplo, "gemini-pro" para texto)
+const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-// Obtiene el token de Z-API de las variables de entorno
 const ZAPI_TOKEN = process.env.ZAPI_TOKEN;
 
-// --- Ruta de salud (Health Check) para Render ---
-// Esta ruta responderá a solicitudes GET en la raíz de tu URL
+// Ruta de salud (Health Check)
 app.get("/", (req, res) => {
   res.status(200).send("Bot de WhatsApp activo y funcionando!");
 });
 
 // Ruta principal del webhook para recibir mensajes de Z-API
 app.post("/webhook", async (req, res) => {
-  // Logea el cuerpo completo de la solicitud para depuración
-  // Esto nos ha ayudado a entender la estructura de Z-API
   console.log("Webhook recibido. Contenido de req.body:", req.body);
 
   try {
-    // --- CAMBIOS CRUCIALES AQUÍ ---
-    // Según los logs, el texto del mensaje está en req.body.text.message
     const msg = req.body.text.message;
-
-    // Según los logs, el número del remitente está en req.body.phone
     const sender = req.body.phone;
-    // --- FIN CAMBIOS ---
 
-    // Asegúrate de que tanto 'msg' como 'sender' existan
     if (!msg || !sender) {
-        console.error("Error: Mensaje o remitente no encontrados en el webhook.");
-        return res.sendStatus(400); // Bad Request si falta información
+      console.error("Error: Mensaje o remitente no encontrados en el webhook.");
+      return res.sendStatus(400); // Bad Request si falta información
     }
 
-    // Llama a la API de OpenAI para obtener una respuesta del chat
-    // Usando el método correcto para la versión 4.x: openai.chat.completions.create
-    const respuesta = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", // Asegúrate de que este modelo esté disponible para tu cuenta OpenAI
-      messages: [{ role: "user", content: msg }]
-    });
+    // --- CAMBIO CRUCIAL AQUÍ: Llama a la API de Gemini ---
+    const result = await model.generateContent(msg);
+    const response = await result.response;
+    const textoIA = response.text(); // Extrae el texto de la respuesta de Gemini
+    // --- FIN CAMBIO ---
 
-    // Accede al contenido del mensaje de la IA
-    const textoIA = respuesta.choices[0].message.content; // Acceso correcto para v4
-
-    // Envía la respuesta de la IA de vuelta a WhatsApp a través de Z-API
     await axios.post(`https://api.z-api.io/instances/${process.env.ZAPI_INSTANCE_ID}/send-text`, {
-      phone: sender, // El número de teléfono del destinatario
-      message: textoIA // El mensaje generado por la IA
+      phone: sender,
+      message: textoIA
     }, {
       headers: { Authorization: `Bearer ${ZAPI_TOKEN}` }
     });
 
-    // Envía una respuesta 200 OK a Z-API para indicar que el webhook fue recibido y procesado
     res.sendStatus(200);
   } catch (error) {
-    // Captura y logea cualquier error que ocurra dentro del try block
-    console.error("Error en el webhook o al procesar el mensaje:", error.message);
-    // Envía una respuesta 500 Internal Server Error a Z-API
+    // Es muy importante loguear el error completo para depuración
+    console.error("Error en el webhook o al procesar el mensaje con Gemini:", error);
+    // Puedes diferenciar errores, por ejemplo, si el error tiene una propiedad `response.data` de axios
+    if (error.response) {
+        console.error("Detalles del error de API:", error.response.data);
+    }
     res.sendStatus(500);
   }
 });
 
-// Define el puerto en el que la aplicación escuchará.
-// Usa process.env.PORT proporcionado por Render, o 3000 como fallback local.
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Bot activo en puerto ${PORT}`));
